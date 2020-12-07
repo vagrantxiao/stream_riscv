@@ -14,6 +14,7 @@ module fifo_stream #(
     );
 
 
+
 wire empty;
 reg rd_en;
 wire full;
