@@ -10,7 +10,7 @@ module picorv_mem#(
   input [31:0] mem_addr,
   input [31:0] mem_wdata,
   input [3:0] mem_wstrb,
-  output reg [31:0] mem_rdata,
+  output [31:0] mem_rdata,
   output val_out,
   output [31:0] dout,
   input ready_downward,
@@ -44,17 +44,7 @@ module picorv_mem#(
     assign val_out = (mem_addr == 32'h10000008) ? val_out_tmp : 1'b0;
     assign stream2riscv_vld =  (mem_addr == 32'h10000004) ? 1'b1 : 1'b0;
     
-    //reg see_read_addr;
-    
-   // always@(*) begin
-       // if(stream2riscv_vld && !ready_upward) begin
-      //      see_read_addr = 1;
-      //  end else if(ready_upward == 1) begin
-     //       see_read_addr = 0;
-    //    end else begin
-    //        see_read_addr = see_read_addr;
-    //    end
-    //end
+
     reg [7:0] ready_upward_cnt;
     wire see_read_addr_cnt_en;
     reg [7:0]  see_read_addr_cnt;
@@ -108,14 +98,13 @@ module picorv_mem#(
         .reset(!resetn)
     );        
     
+    reg mem_rdata_sel;
     wire [14:0] true_addr;
     assign true_addr = mem_addr[16:2];
     assign dout = mem_wdata;
 	always @(posedge clk) begin
 		mem_ready <= 0;
 		if (mem_valid && !mem_ready) begin
-			//if (mem_addr < 32'h1000_0000) begin
-				
 				if(mem_addr == 32'h10000008) begin
 				    mem_ready <= ready_downward;
 				end else if(mem_addr == 32'h10000004) begin
@@ -125,22 +114,88 @@ module picorv_mem#(
 				end
 				
 				if(mem_addr == 32'h10000004) begin
-				    mem_rdata <= din;
+				    mem_rdata_sel <= 1;
 				end else begin
-				    mem_rdata <= memory[true_addr];
+				    mem_rdata_sel <= 0;
 				end
 				
 				if (mem_wstrb[0]) memory[true_addr][ 7: 0] <= mem_wdata[ 7: 0];
 				if (mem_wstrb[1]) memory[true_addr][15: 8] <= mem_wdata[15: 8];
 				if (mem_wstrb[2]) memory[true_addr][23:16] <= mem_wdata[23:16];
 				if (mem_wstrb[3]) memory[true_addr][31:24] <= mem_wdata[31:24];
-			//end
-			/* add memory-mapped IO here */
-		//end else if(mem_addr == 32'h10000004) begin
-        //    mem_ready <= val_in;
         end
 	end
 
 
+wire [31:0] do;
+assign mem_rdata = mem_rdata_sel ? din : do;
+
+ram0#(
+    .DWIDTH(8),
+    .AWIDTH(15),
+    .RAM_TYPE("block"),
+    .INIT_VALUE("/home/ylxiao/ws_riscv/picorv32/firmware/firmware0.hex")
+    )ram_inst_0(                                                          
+    // Write port                                                     
+    .clk(clk),                                                      
+    .di(mem_wdata[ 7: 0]),                                                  
+    .wren((mem_valid && !mem_ready)&&(mem_wstrb[0])),                                                       
+    .wraddr(true_addr),                                               
+    // Read port                                                                                                           
+    .rden(mem_valid && !mem_ready),                                                       
+    .rdaddr(true_addr),                                               
+    .do(do[7:0])
+    );   
+
+ram0#(
+    .DWIDTH(8),
+    .AWIDTH(15),
+    .RAM_TYPE("block"),
+    .INIT_VALUE("/home/ylxiao/ws_riscv/picorv32/firmware/firmware1.hex")
+    )ram_inst_1(                                                          
+    // Write port                                                     
+    .clk(clk),                                                      
+    .di(mem_wdata[ 15: 8]),                                                  
+    .wren((mem_valid && !mem_ready)&&(mem_wstrb[1])),                                                       
+    .wraddr(true_addr),                                               
+    // Read port                                                                                                           
+    .rden(mem_valid && !mem_ready),                                                       
+    .rdaddr(true_addr),                                               
+    .do(do[15:8])
+    ); 
+
+ram0#(
+    .DWIDTH(8),
+    .AWIDTH(15),
+    .RAM_TYPE("block"),
+    .INIT_VALUE("/home/ylxiao/ws_riscv/picorv32/firmware/firmware2.hex")
+    )ram_inst_2(                                                          
+    // Write port                                                     
+    .clk(clk),                                                      
+    .di(mem_wdata[ 23: 16]),                                                  
+    .wren((mem_valid && !mem_ready)&&(mem_wstrb[2])),                                                       
+    .wraddr(true_addr),                                               
+    // Read port                                                                                                           
+    .rden(mem_valid && !mem_ready),                                                       
+    .rdaddr(true_addr),                                               
+    .do(do[23:16])
+    ); 
+    
+ram0#(
+    .DWIDTH(8),
+    .AWIDTH(15),
+    .RAM_TYPE("block"),
+    .INIT_VALUE("/home/ylxiao/ws_riscv/picorv32/firmware/firmware3.hex")
+    )ram_inst_3(                                                          
+    // Write port                                                     
+    .clk(clk),                                                      
+    .di(mem_wdata[ 31: 24]),                                                  
+    .wren((mem_valid && !mem_ready)&&(mem_wstrb[3])),                                                       
+    .wraddr(true_addr),                                               
+    // Read port                                                                                                           
+    .rden(mem_valid && !mem_ready),                                                       
+    .rdaddr(true_addr),                                               
+    .do(do[31:24])
+    );   
 endmodule
 
